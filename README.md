@@ -1,331 +1,260 @@
-# Processo Seletivo – Intensivo Maker | IoT
-## Etapa Prática – Sistemas Embarcados
-
-Bem-vindo(a) à **etapa prática do processo seletivo para o Intensivo Maker | IoT**.
-
-Esta atividade tem como objetivo avaliar suas competências em **Sistemas Embarcados**, com foco em **organização de projeto, lógica de firmware e simulação de hardware**, a partir da aplicação prática dos conhecimentos adquiridos nos cursos EAD da etapa anterior.
-
-> 🎯 **Objetivo principal**  
-> Avaliar sua capacidade de **planejar, estruturar e desenvolver** uma solução funcional de sistemas embarcados, seguindo boas práticas de engenharia.
-
----
-
-## 🏁 Passo 0 – Antes de Tudo
-
-Se você **nunca utilizou Git ou GitHub**, não se preocupe.  
-Siga atentamente os passos abaixo — eles fazem parte do processo de aprendizagem esperado.
-
----
-
-### 1️⃣ Criação de Conta no GitHub
-
-1. Acesse: https://github.com  
-2. Clique em **Sign up**  
-3. Crie sua conta gratuita seguindo as instruções da plataforma  
-
-> 📌 O GitHub será utilizado para:
-> - Envio do seu projeto  
-> - Versionamento do código  
-> - Correção e validação automática via GitHub Actions  
-
----
-
-### 2️⃣ Instalação do Git
-
-O **Git** é a ferramenta responsável pelo controle de versões do seu código.
-
-### Windows
-Baixe e instale o **Git Bash**:  
-https://git-scm.com/downloads
-
-### Linux / macOS
-Verifique se o Git já está instalado:
-
-```bash
-git --version
-```
-> Caso não esteja, instale pelo gerenciador de pacotes do seu sistema.
-
-## ⚙ Passo 1 – Preparando o Ambiente
-
-Para desenvolver o desafio, você deverá criar uma cópia deste repositório no seu GitHub.
-
-### 1️⃣ Fork do Repositório
-No canto superior direito desta página, clique em Fork
-
-<img width="219" height="45" alt="image" src="https://github.com/user-attachments/assets/5d629626-513a-445c-ba0f-e5bb3e225187" />
-
-
-Uma cópia do repositório será criada no seu perfil do GitHub
-
-> 🔎 O Fork permite que você trabalhe de forma independente, sem alterar o repositório original do processo seletivo.
-
-### 2️⃣ Clone do Repositório
-
-No repositório do seu Fork, clique em **<> Code**
-
-<img width="149" height="52" alt="image" src="https://github.com/user-attachments/assets/abbd331b-a005-4633-89c6-afd16acbe828" />
-
-Copie a URL e execute no terminal:
-
-```bash
-git clone https://github.com/SEU_USUARIO/nome-do-repositorio.git
-cd nome-do-repositorio
-```
-
-> O comando git clone cria uma cópia local do repositório para desenvolvimento.
-
-### 3️⃣ Preparação do Ambiente de Execução
-
-Você pode executar o projeto de duas formas. Escolha apenas uma.
-
-#### 🔹 Opção A – Ambiente Python Local
-
-**Requisitos:**
-
-- Python 3.10 ou 3.11
-- pip
-
-**Instale as dependências:**
-
-```bash
-pip install -r requirements.txt
-```
-
-#### 🔹 Opção B – Dev Container (Recomendado)
-
-Este repositório inclui um Dev Container, garantindo um ambiente padronizado.
-
-**Requisitos:**
-
-- VS Code
-- Docker instalado
-- Extensão Dev Containers
-
-**Passos:**
-
-1. Abra o repositório no VS Code
-2. Clique em “Reopen in Container”
-3. Aguarde a criação automática do ambiente
-
-> ➡️ Todas as dependências serão instaladas automaticamente.
-
-## 🔐 Passo 2 – Criando sua API Key do Wokwi
-
-A simulação do projeto será executada automaticamente via GitHub Actions, utilizando o Wokwi CLI.
-
-Para isso, você precisa gerar uma API Key.
-
-1. Acesse: https://wokwi.com/dashboard/ci
-2. Faça login (Google ou GitHub)
-3. Clique em Generate API Token
-4. Copie a chave gerada (exemplo: wokwi-xxxxxxxx)
-
->⚠️ Importante
-- Nunca faça commit dessa chave
-- Ela deve ser armazenada apenas como secret no GitHub
-
-## 🔒 Passo 3 – Configurando a API Key no GitHub (Secrets)
-
-**No repositório do seu Fork:**
-
-1. Vá em Settings
-2. Acesse Secrets and variables → Actions
-3. Clique em New repository secret
-4. Nome: WOKWI_API_KEY
-5. Valor: sua chave gerada
-6. Salve
-
-> ✔️ As GitHub Actions do template já estão preparadas para usar essa variável automaticamente.
-
-## 🧠 Passo 4 – Desafio Técnico
-
-Você deverá desenvolver um projeto de sistemas embarcados simulados, utilizando Python e Wokwi.
-
-### 📁 Estrutura mínima esperada
-
-```text
-/project
- ├── src/
- │   └── main.py        # Código principal do projeto
- ├── wokwi.toml         # Configuração da simulação
- ├── diagram.json       # Circuito no Wokwi
- └── README.md          # Explicação do seu projeto
-```
-
-> Você pode expandir essa estrutura se desejar, desde que mantenha os arquivos essenciais.
-
-### 🛠 Como Desenvolver seu Projeto
-
-O desenvolvimento acontece principalmente nos arquivos abaixo:
-
-#### 1️⃣ src/main.py
-
-- Código Python executado na simulação
-- Implementa a lógica do sistema embarcado
-- Exemplos: controle de LEDs, leitura de sensores, estados, temporizações, etc.
-
-#### 2️⃣ diagram.json
-
-- Define o hardware virtual do projeto
-- Componentes como:
-  - LEDs
-  - Botões
-  - Sensores
-  - Placa microcontroladora
-
-#### 3️⃣ wokwi.toml
-
-- Configura a simulação:
-  - Tipo de placa
-  - Framework
-  - Dependências adicionais
-
-#### 4️⃣ Commit e Push
-
-Após suas alterações:
-
-```bash
-git add .
-git commit -m "Descrição clara do que foi feito"
-git push
-```
-### ⚙ Execução Automática (GitHub Actions)
-
-A cada push, o GitHub Actions irá automaticamente:
-
-- Executar o pipeline de build
-- Rodar a simulação via Wokwi CLI
-- Validar que o projeto executa sem erros
-
-### 📌 Caso algo falhe:
-
-- Vá até a aba Actions
-- Analise os logs da execução
-- Corrija e envie novamente
-
-## 📊 Critérios de Avaliação
-
-Esta etapa será avaliada considerando:
-
-- Funcionamento correto da simulação
-- Código organizado e legível
-- Estrutura de arquivos correta
-- Uso adequado do Wokwi
-- Commits claros e bem descritos
-- Projeto executando sem falhas nas Actions
-
----
-
-## 📎 Submissão Final
-
-Após concluir o desenvolvimento:
-
-1. Verifique se o projeto **executa sem erros** nas GitHub Actions  
-2. Confirme que todos os arquivos obrigatórios estão presentes  
-3. Copie o link do **seu repositório no GitHub**
-
-📤 Envie o link conforme as orientações do processo seletivo na plataforma **Moodle**.
-
----
-
-## 📝 Relatório do Candidato
-
-O arquivo **`README.md` do seu repositório** deve ser utilizado como o  
-**relatório final do desafio técnico**.
-
-Preencha todas as seções abaixo de forma **clara, objetiva e técnica**.
-
-> 💡 **Dica importante**  
-> Não é necessário um relatório extenso.  
-> O principal critério é demonstrar **clareza nas decisões técnicas**, organização e entendimento do sistema embarcado desenvolvido.
-
----
+# 📝 Relatório do Candidato
 
 ### 👤 Identificação do Candidato
 
-- **Nome completo:**  
-- **GitHub:**  
+- **Nome completo: Miguel Wagner Galvão Ferreira de Morais**  
+- **GitHub: https://github.com/miguelw11/processoseletivoIA-Miguel**  
 
 ---
 
 ## 1️⃣ Visão Geral da Solução
 
-Descreva, em poucas palavras:
+Este projeto apresenta o desenvolvimento de um sistema embarcado dedicado ao monitoramento inteligente de luminosidade ambiente, utilizando a placa ESP32 como unidade de processamento, um sensor LDR como elemento de aquisição analógica e um LED como atuador de sinalização visual.
 
-- Qual é o objetivo do seu projeto  
-- O que o sistema embarcado simulado faz  
-- Como o usuário interage com ele (se aplicável)
+A proposta foi construída para simular um cenário real de supervisão luminosa em ambientes que necessitam de acompanhamento contínuo, como:
+
+corredores de circulação;
+depósitos técnicos;
+salas de equipamentos;
+áreas industriais;
+ambientes prediais de segurança.
+
+O firmware foi projetado para atuar em dois contextos complementares:
+
+🔹 Modo Automático
+
+O próprio sistema realiza a leitura da luminosidade e toma decisões de forma autônoma, sinalizando condições críticas de baixa iluminação.
+
+🔹 Modo Manual
+
+O operador assume o controle da sinalização, podendo forçar estados normais ou de alerta independentemente da leitura do sensor.
+
+Essa dupla abordagem torna a solução mais robusta, pois não depende exclusivamente da automação: em cenários de manutenção, contingência, falha do sensor ou testes operacionais, o usuário pode intervir diretamente.
+
+Em sistemas embarcados reais, essa coexistência entre operação automática e controle manual é amplamente utilizada para garantir:
+
+-Redundância operacional
+
+-Segurança em inspeções
+
+-Validação de componentes
+
+-Resposta humana em situações excepcionais
+
+### ⏺️Cenário real de aplicação
+
+<div align="center">
+
+<img width="641" height="424" alt="image" src="https://github.com/user-attachments/assets/5d5acc87-bab5-4351-b3d3-845291e82193" />
+
+
+</div>
+
+O sistema proposto seria ideal em locais nos quais a queda de luminosidade pode representar risco operacional, dificuldade de circulação, falhas de inspeção visual, comprometimento de manutenção ou aumento da insegurança em áreas técnicas.
+
+Dessa forma, a solução atua como um núcleo de supervisão preventiva, permitindo que empresas implementem sinalização rápida e de baixo custo para ambientes críticos.
+
 
 ---
 
 ## 2️⃣ Arquitetura do Sistema Embarcado
 
-Explique a arquitetura lógica do seu projeto, abordando:
+A lógica do firmware foi estruturada utilizando máquina de estados finitos, o que proporciona previsibilidade de execução, código modular, facilidade de manutenção e possibilidade de expansão futura.
 
-- Fluxo principal do programa (`main.py`)  
-- Estrutura de estados, loops ou temporizações  
-- Como os componentes interagem entre si  
+### ⏺️Fluxo principal do `main.py`
 
-Se desejar, utilize tópicos ou um pequeno diagrama em texto.
+O laço principal executa continuamente:
+
+1. leitura do tempo atual (`ticks_ms()`);
+2. leitura analógica do sensor LDR;
+3. tratamento dos eventos do botão;
+4. atualização dos estados automáticos quando aplicável;
+5. atualização da sinalização visual do LED.
+
+Essa abordagem evita travamentos e mantém o firmware responsivo.
+
+### ⏺️Estrutura lógica resumida
+
+Inicialização -> OFF
+      |
+Clique curto
+      v
+AUTOMATICO / MONITORANDO
+      |
+Baixa luminosidade
+      v
+ALERTA
+
+Clique longo <-> alterna AUTOMATICO / MANUAL
+
+MANUAL:
+clique curto alterna MANUAL_NORMAL <-> MANUAL_ALERTA
+
+MANUAL:
+clique curto alterna MANUAL_NORMAL <-> MANUAL_ALERTA
+
+### ⏺️Estados implementados
+**OFF** → sistema desligado;
+
+**MONITORANDO** → luminosidade adequada;
+
+**ALERTA** → baixa luminosidade detectada automaticamente;
+
+**MANUAL_NORMAL** → sinal normal forçado pelo operador;
+
+**MANUAL_ALERTA** → alerta forçado manualmente.
 
 ---
 
 ## 3️⃣ Componentes Utilizados na Simulação
 
-Liste os principais componentes definidos no `diagram.json`, por exemplo:
+### ESP32 DevKit V1
 
-- Tipo de placa utilizada  
-- LEDs, botões, sensores, atuadores, etc.  
-- Função de cada componente no sistema  
+-Microcontrolador principal responsável pelo processamento da lógica embarcada.
+
+### Sensor LDR
+
+-Responsável pela aquisição analógica da luminosidade ambiente através do ADC no GPIO34.
+
+### Push Button
+
+-Responsável por toda a interação física com o usuário:
+
+- clique curto;
+- clique longo;
+- alternância de estados.
+
+### LED Vermelho + Resistor de 220Ω
+
+Atuador visual responsável pela sinalização:
+
+- desligado = OFF;
+- aceso fixo = condição normal;
+- piscando = condição de alerta.
+
+### Monitor Serial
+
+Exibe logs de transição e monitoramento interno do firmware.
 
 ---
 
 ## 4️⃣ Decisões Técnicas Relevantes
 
-Explique brevemente decisões importantes tomadas durante o desenvolvimento, como:
+Durante o desenvolvimento, foram adotadas decisões que aproximam a solução de um firmware profissional.
 
-- Organização do código  
-- Uso de funções, estados ou constantes  
-- Estratégias para temporização ou controle lógico  
+### ✔ Código modularizado por funções
+
+O código foi separado em funções específicas para leitura do sensor, tratamento do botão, atualização automática de estado e controle do LED.
+
+### ✔ Máquina de estados
+
+A lógica foi organizada por estados explícitos, evitando condicionais confusas e facilitando futuras expansões.
+
+### ✔ Debounce por software
+
+Foi implementado debounce temporal para evitar múltiplas leituras falsas do botão.
+
+### ✔ Clique curto e clique longo
+
+Com apenas um botão físico, o sistema consegue diferenciar comandos simples e comandos de troca de modo.
+
+### ✔ Temporização não bloqueante
+
+A piscagem do LED ocorre com `ticks_ms()`, sem congelar o loop principal.
+
+### ✔ Histerese no sensor
+
+Dois limiares foram aplicados para evitar oscilação instável entre estados.
+
+### ✔ Inclusão do modo manual como redundância operacional
+
+O modo manual não foi inserido apenas como recurso extra, mas como mecanismo de contingência.
+
+Em aplicações reais, sistemas totalmente automáticos podem sofrer falha de sensor, necessidade de manutenção, testes de bancada ou necessidade de inspeção humana.
+
+Com o modo manual, o operador mantém capacidade de:
+
+- validar o atuador;
+- forçar sinalização de alerta;
+- forçar sinalização normal;
+- manter o sistema útil mesmo com falhas de leitura.
+
+Isso agrega valor prático e demonstra preocupação com confiabilidade operacional.
 
 ---
 
 ## 5️⃣ Resultados Obtidos
 
-Descreva o comportamento final do sistema:
+Ao final da implementação, a simulação apresentou:
 
-- O que funciona corretamente  
-- Quais requisitos foram atendidos  
-- Resultado observado na simulação do Wokwi  
+- leitura estável do sensor LDR;
+- identificação correta de baixa luminosidade;
+- alternância funcional entre OFF, MONITORANDO e ALERTA;
+- reconhecimento de clique curto e clique longo;
+- alternância entre modos AUTOMÁTICO e MANUAL;
+- forçamento manual de estados;
+- sinalização visual consistente;
+- mensagens de log no terminal serial;
+- execução validada com sucesso no GitHub Actions.
 
----
-
-## 6️⃣ Comentários Adicionais (Opcional)
-
-Utilize este espaço para comentar, se desejar:
-
-- Dificuldades encontradas  
-- Limitações da solução  
-- Melhorias que você faria com mais tempo  
-- Principais aprendizados durante o desafio  
+A solução se mostrou estável no Wokwi e compatível com execução via VSCode.
 
 ---
 
-> ✅ Este relatório faz parte da avaliação técnica.  
-> Clareza, objetividade e organização são tão importantes quanto o funcionamento do código.
+## 6️⃣ Diagrama no Wokwi
+
+<div align="center">
+
+<img width="674" height="396" alt="image" src="https://github.com/user-attachments/assets/b6ca462e-9cee-4e5e-bae0-4f4cd8dbe2ad" />
+
+</div> 
 
 ---
 
-## 🆘 Suporte
+## 7️⃣ Execução Local no VSCode e Geração do `fs.bin`
 
-Em caso de dúvidas:
+Para funcionamento local no VSCode com a extensão do Wokwi Simulator, foi utilizada a geração de um filesystem binário (`fs.bin`) contendo os arquivos presentes na pasta `src`.
 
-- Consulte o material dos cursos EAD
-- Leia atentamente este README
-- Analise os logs das GitHub Actions
-- Utilize os canais oficiais para contato com os instrutores
+### Script utilizado: `build_fs.py`
 
-Boa sorte no processo seletivo.
-Mostre sua capacidade de pensar como um engenheiro de sistemas embarcados.
-****
+Esse script percorre automaticamente os arquivos da pasta `src`, empacota o conteúdo em um filesystem LittleFS e gera o binário `fs.bin`, utilizado pelo ESP32 durante a simulação.
+
+Sempre que houver alteração em `src/main.py`, execute:
+
+`python build_fs.py`
+
+---
+
+## 8️⃣ Como testar em outra máquina
+
+Para testar em outras máquinas, é necessário seguir alguns passos:
+1-Clonar o repositório na IDE
+2-Instalar a dependência necessária (pip install littlefs-python)
+3-Gerar o filesystem binário (build_fs.py)
+4-Configurar Token do Wokwi CI
+5-Abrir no VSCode com a extensão Wokwi Simulator
+---
+---
+
+## 9️⃣ Comentários Finais
+
+O principal aprendizado deste desafio esteve na construção de um firmware orientado a eventos, modular, responsivo e preparado para múltiplos cenários operacionais.
+
+Além da simulação funcional, o projeto buscou reproduzir preocupações reais de engenharia, como:
+
+redundância de operação;
+clareza de estados;
+manutenção futura;
+validação serial;
+integração com pipeline automatizado.
+
+Com mais tempo, melhorias futuras incluiriam:
+
+display LCD de status;
+buzzer de alerta;
+registro histórico de eventos;
+monitoramento remoto em nuvem.
+
+---
+
+*Relatório final desenvolvido para o desafio técnico de IoT para o processo seletivo do PNAAT.*
