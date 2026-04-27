@@ -240,7 +240,6 @@ Para testar em outras máquinas, é necessário seguir alguns passos:
 5-Abrir no VSCode com a extensão Wokwi Simulator
 
 ---
----
 
 ## 9️⃣ Comentários Finais
 
