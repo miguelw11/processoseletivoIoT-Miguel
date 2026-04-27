@@ -3,7 +3,7 @@
 ### 👤 Identificação do Candidato
 
 - **Nome completo: Miguel Wagner Galvão Ferreira de Morais**  
-- **GitHub: https://github.com/miguelw11/processoseletivoIA-Miguel**  
+- **GitHub: https://github.com/miguelw11/processoseletivoIoT-Miguel**  
 
 ---
 
