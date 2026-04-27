@@ -1,6 +1,10 @@
 from machine import Pin, ADC
 import time
 
+# Print para validação do Actions
+print("Teste")
+print("Iniciando firmware de monitoramento de luminosidade...")
+
 # Definição dos pinos utilizados
 LED_PIN = 2
 BUTTON_PIN = 15
