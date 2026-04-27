@@ -228,11 +228,17 @@ Sempre que houver alteração em `src/main.py`, execute:
 ## 8️⃣ Como testar em outra máquina
 
 Para testar em outras máquinas, é necessário seguir alguns passos:
+
 1-Clonar o repositório na IDE
+
 2-Instalar a dependência necessária (pip install littlefs-python)
+
 3-Gerar o filesystem binário (build_fs.py)
+
 4-Configurar Token do Wokwi CI
+
 5-Abrir no VSCode com a extensão Wokwi Simulator
+
 ---
 ---
 
