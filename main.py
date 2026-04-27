@@ -9,11 +9,19 @@ BUTTON_PIN = 15
 LDR_PIN = 34
 
 # =========================
+# MODOS
+# =========================
+AUTOMATICO = 0
+MANUAL = 1
+
+# =========================
 # ESTADOS
 # =========================
 OFF = 0
 MONITORANDO = 1
 ALERTA = 2
+MANUAL_NORMAL = 3
+MANUAL_ALERTA = 4
 
 # =========================
 # HARDWARE
@@ -28,15 +36,22 @@ ldr.atten(ADC.ATTN_11DB)
 # CONFIGURAÇÕES
 # =========================
 DEBOUNCE_MS = 300
-BLINK_INTERVAL_MS = 200
+LONG_PRESS_MS = 1000
+BLINK_ALERTA_MS = 200
+
 LIMIAR_ENTRA_ALERTA = 2500
 LIMIAR_SAI_ALERTA = 1800
 
 # =========================
-# VARIÁVEIS DE CONTROLE
+# VARIÁVEIS
 # =========================
+modo = AUTOMATICO
 estado = OFF
+
 ultimo_clique = 0
+tempo_botao_pressionado = 0
+botao_anterior = 1
+
 ultimo_blink = 0
 led_piscando = False
 
@@ -45,29 +60,67 @@ def ler_sensor():
     return ldr.read()
 
 
-def botao_foi_pressionado(agora):
-    global ultimo_clique
+def tratar_botao(agora):
+    global tempo_botao_pressionado, botao_anterior, ultimo_clique
 
-    if button.value() == 0:
+    leitura_atual = button.value()
+
+    # botão acabou de ser pressionado
+    if leitura_atual == 0 and botao_anterior == 1:
+        tempo_botao_pressionado = agora
+
+    # botão acabou de ser solto
+    if leitura_atual == 1 and botao_anterior == 0:
+        duracao = time.ticks_diff(agora, tempo_botao_pressionado)
+
         if time.ticks_diff(agora, ultimo_clique) > DEBOUNCE_MS:
             ultimo_clique = agora
-            return True
 
-    return False
+            if duracao >= LONG_PRESS_MS:
+                alternar_modo()
+            else:
+                clique_curto()
+
+    botao_anterior = leitura_atual
 
 
-def alternar_sistema():
+def clique_curto():
     global estado
 
-    if estado == OFF:
-        estado = MONITORANDO
-        print("Sistema ligado: MONITORANDO")
+    if modo == AUTOMATICO:
+        if estado == OFF:
+            estado = MONITORANDO
+            print("Sistema ligado: MODO AUTOMATICO / MONITORANDO")
+        else:
+            estado = OFF
+            print("Sistema desligado: OFF")
+
+    elif modo == MANUAL:
+        if estado == MANUAL_NORMAL:
+            estado = MANUAL_ALERTA
+            print("Modo MANUAL: alerta forçado")
+        else:
+            estado = MANUAL_NORMAL
+            print("Modo MANUAL: sinal normal forçado")
+
+
+def alternar_modo():
+    global modo, estado
+
+    if modo == AUTOMATICO:
+        modo = MANUAL
+        estado = MANUAL_NORMAL
+        print("Modo alterado: MANUAL")
+        print("Controle manual ativo: sinal normal forçado")
+
     else:
-        estado = OFF
-        print("Sistema desligado: OFF")
+        modo = AUTOMATICO
+        estado = MONITORANDO
+        print("Modo alterado: AUTOMATICO")
+        print("Sensor LDR voltou a controlar o sistema")
 
 
-def atualizar_estado(valor_luz):
+def atualizar_estado_automatico(valor_luz):
     global estado
 
     if estado == MONITORANDO:
@@ -81,9 +134,16 @@ def atualizar_estado(valor_luz):
             print("Luminosidade restabelecida: MONITORANDO")
 
 
-def atualizar_led(agora):
+def piscar_led(agora, intervalo):
     global ultimo_blink, led_piscando
 
+    if time.ticks_diff(agora, ultimo_blink) >= intervalo:
+        ultimo_blink = agora
+        led_piscando = not led_piscando
+        led.value(led_piscando)
+
+
+def atualizar_led(agora):
     if estado == OFF:
         led.value(0)
 
@@ -91,20 +151,22 @@ def atualizar_led(agora):
         led.value(1)
 
     elif estado == ALERTA:
-        if time.ticks_diff(agora, ultimo_blink) >= BLINK_INTERVAL_MS:
-            ultimo_blink = agora
-            led_piscando = not led_piscando
-            led.value(led_piscando)
+        piscar_led(agora, BLINK_ALERTA_MS)
+
+    elif estado == MANUAL_NORMAL:
+        led.value(1)
+
+    elif estado == MANUAL_ALERTA:
+        piscar_led(agora, BLINK_ALERTA_MS)
 
 
 while True:
     agora = time.ticks_ms()
     valor_luz = ler_sensor()
 
-    if botao_foi_pressionado(agora):
-        alternar_sistema()
+    tratar_botao(agora)
 
-    if estado != OFF:
-        atualizar_estado(valor_luz)
+    if modo == AUTOMATICO and estado != OFF:
+        atualizar_estado_automatico(valor_luz)
 
     atualizar_led(agora)
