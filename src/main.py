@@ -1,34 +1,34 @@
 from machine import Pin, ADC
 import time
+import telegram_service as telegram
 
-# Print para validação do Actions
 print("Teste")
 print("Iniciando firmware de monitoramento de luminosidade...")
 
-# Definição dos pinos utilizados
+# Definicao dos pinos utilizados
 LED_PIN = 2
 BUTTON_PIN = 15
 LDR_PIN = 34
 
-# Modos de operação
+# Modos de operacao
 AUTOMATICO = 0
 MANUAL = 1
 
-# Estados possíveis do sistema
+# Estados possiveis do sistema
 OFF = 0
 MONITORANDO = 1
 ALERTA = 2
 MANUAL_NORMAL = 3
 MANUAL_ALERTA = 4
 
-# Inicialização dos componentes
+# Inicializacao dos componentes
 led = Pin(LED_PIN, Pin.OUT)
 button = Pin(BUTTON_PIN, Pin.IN, Pin.PULL_UP)
 
 ldr = ADC(Pin(LDR_PIN))
 ldr.atten(ADC.ATTN_11DB)
 
-# Configurações de controle
+# Configuracoes de controle
 DEBOUNCE_MS = 300
 LONG_PRESS_MS = 1000
 BLINK_ALERTA_MS = 200
@@ -37,7 +37,7 @@ BLINK_ALERTA_MS = 200
 LIMIAR_ENTRA_ALERTA = 2500
 LIMIAR_SAI_ALERTA = 1800
 
-# Variáveis de controle do firmware
+# Variaveis de controle do firmware
 modo_operacao = AUTOMATICO
 estado_sistema = OFF
 
@@ -48,14 +48,165 @@ estado_anterior_botao = 1
 ultimo_blink = 0
 estado_led_piscando = False
 
+# Registro simples dos eventos mais recentes
+eventos = []
+contador_alertas = 0
+
+
+def registrar_evento(mensagem, notificar=False):
+    """Registra evento localmente e opcionalmente envia ao Telegram."""
+    global eventos
+
+    print(mensagem)
+
+    eventos.append(mensagem)
+
+    if len(eventos) > 5:
+        eventos.pop(0)
+
+    if notificar:
+        telegram.enviar(mensagem)
+
+
+def obter_nome_modo():
+    if modo_operacao == AUTOMATICO:
+        return "AUTOMATICO"
+
+    return "MANUAL"
+
+
+def obter_nome_estado():
+    if estado_sistema == OFF:
+        return "OFF"
+
+    if estado_sistema == MONITORANDO:
+        return "MONITORANDO"
+
+    if estado_sistema == ALERTA:
+        return "ALERTA"
+
+    if estado_sistema == MANUAL_NORMAL:
+        return "MANUAL_NORMAL"
+
+    if estado_sistema == MANUAL_ALERTA:
+        return "MANUAL_ALERTA"
+
+    return "DESCONHECIDO"
+
+
+def montar_status():
+    luminosidade = ler_sensor_luminosidade()
+
+    return (
+        "Status do Sistema\n"
+        "Modo: {}\n"
+        "Estado: {}\n"
+        "Luminosidade: {}\n"
+        "Alertas registrados: {}\n"
+        "Ultimo evento: {}"
+    ).format(
+        obter_nome_modo(),
+        obter_nome_estado(),
+        luminosidade,
+        contador_alertas,
+        eventos[-1] if eventos else "Nenhum evento registrado"
+    )
+
+
+def montar_eventos():
+    if not eventos:
+        return "Nenhum evento registrado."
+
+    texto = "Ultimos eventos:\n"
+
+    for indice, evento in enumerate(eventos):
+        texto += "{}. {}\n".format(indice + 1, evento)
+
+    return texto
+
+
+def montar_help():
+    return (
+        "Comandos disponiveis:\n"
+        "/ligar - liga o sistema\n"
+        "/desligar - desliga o sistema\n"
+        "/status - mostra estado atual\n"
+        "/auto - ativa modo automatico\n"
+        "/manual - ativa modo manual\n"
+        "/forcar_alerta - forca alerta manual\n"
+        "/normal - forca sinal normal manual\n"
+        "/eventos - lista ultimos eventos\n"
+        "/help - mostra esta ajuda"
+    )
+
+
+def processar_comando_telegram(comando):
+    """Executa comandos recebidos remotamente pelo Telegram."""
+    global modo_operacao, estado_sistema
+
+    comando = comando.strip().lower()
+
+    if comando == "/ligar":
+        if modo_operacao == AUTOMATICO:
+            estado_sistema = MONITORANDO
+            registrar_evento("Comando remoto: sistema ligado em AUTOMATICO", True)
+        else:
+            estado_sistema = MANUAL_NORMAL
+            registrar_evento("Comando remoto: sistema ligado em MANUAL", True)
+
+    elif comando == "/desligar":
+        estado_sistema = OFF
+        registrar_evento("Comando remoto: sistema desligado", True)
+
+    elif comando == "/status":
+        telegram.enviar(montar_status())
+
+    elif comando == "/auto":
+        modo_operacao = AUTOMATICO
+        estado_sistema = MONITORANDO
+        registrar_evento("Comando remoto: modo AUTOMATICO ativado", True)
+
+    elif comando == "/manual":
+        modo_operacao = MANUAL
+        estado_sistema = MANUAL_NORMAL
+        registrar_evento("Comando remoto: modo MANUAL ativado", True)
+
+    elif comando == "/forcar_alerta":
+        modo_operacao = MANUAL
+        estado_sistema = MANUAL_ALERTA
+        registrar_evento("Comando remoto: alerta manual forcado", True)
+
+    elif comando == "/normal":
+        modo_operacao = MANUAL
+        estado_sistema = MANUAL_NORMAL
+        registrar_evento("Comando remoto: sinal normal forcado", True)
+
+    elif comando == "/eventos":
+        telegram.enviar(montar_eventos())
+
+    elif comando == "/help":
+        telegram.enviar(montar_help())
+
+    else:
+        telegram.enviar("Comando nao reconhecido. Use /help.")
+
+
+def verificar_comandos_remotos(agora):
+    """Busca e processa comandos remotos do Telegram."""
+    comandos = telegram.buscar_comandos(agora)
+
+    for comando in comandos:
+        print("Comando Telegram recebido:", comando)
+        processar_comando_telegram(comando)
+
 
 def ler_sensor_luminosidade():
-    """Realiza a leitura analógica do sensor LDR."""
+    """Realiza a leitura analogica do sensor LDR."""
     return ldr.read()
 
 
 def tratar_botao(agora):
-    """Identifica clique curto e clique longo do botão."""
+    """Identifica clique curto e clique longo do botao."""
     global tempo_inicio_pressao, estado_anterior_botao, ultimo_clique
 
     leitura_atual = button.value()
@@ -78,24 +229,24 @@ def tratar_botao(agora):
 
 
 def processar_clique_curto():
-    """Processa ações de clique curto conforme o modo atual."""
+    """Processa acoes de clique curto conforme o modo atual."""
     global estado_sistema
 
     if modo_operacao == AUTOMATICO:
         if estado_sistema == OFF:
             estado_sistema = MONITORANDO
-            print("Sistema ligado: MODO AUTOMATICO / MONITORANDO")
+            registrar_evento("Sistema ligado: MODO AUTOMATICO / MONITORANDO", True)
         else:
             estado_sistema = OFF
-            print("Sistema desligado: OFF")
+            registrar_evento("Sistema desligado: OFF", True)
 
     elif modo_operacao == MANUAL:
         if estado_sistema == MANUAL_NORMAL:
             estado_sistema = MANUAL_ALERTA
-            print("Modo MANUAL: alerta forçado")
+            registrar_evento("Modo MANUAL: alerta forcado", True)
         else:
             estado_sistema = MANUAL_NORMAL
-            print("Modo MANUAL: sinal normal forçado")
+            registrar_evento("Modo MANUAL: sinal normal forcado", True)
 
 
 def alternar_modo_operacao():
@@ -105,32 +256,34 @@ def alternar_modo_operacao():
     if modo_operacao == AUTOMATICO:
         modo_operacao = MANUAL
         estado_sistema = MANUAL_NORMAL
-        print("Modo alterado: MANUAL")
-        print("Controle manual ativo: sinal normal forçado")
+        registrar_evento("Modo alterado: MANUAL", True)
+        registrar_evento("Controle manual ativo: sinal normal forcado", False)
+
     else:
         modo_operacao = AUTOMATICO
         estado_sistema = MONITORANDO
-        print("Modo alterado: AUTOMATICO")
-        print("Sensor LDR voltou a controlar o sistema")
+        registrar_evento("Modo alterado: AUTOMATICO", True)
+        registrar_evento("Sensor LDR voltou a controlar o sistema", False)
 
 
 def atualizar_estado_automatico(valor_luz):
-    """Atualiza os estados automáticos conforme a luminosidade."""
-    global estado_sistema
+    """Atualiza os estados automaticos conforme a luminosidade."""
+    global estado_sistema, contador_alertas
 
     if estado_sistema == MONITORANDO:
         if valor_luz > LIMIAR_ENTRA_ALERTA:
             estado_sistema = ALERTA
-            print("ALERTA: baixa luminosidade detectada")
+            contador_alertas += 1
+            registrar_evento("ALERTA: baixa luminosidade detectada", True)
 
     elif estado_sistema == ALERTA:
         if valor_luz < LIMIAR_SAI_ALERTA:
             estado_sistema = MONITORANDO
-            print("Luminosidade restabelecida: MONITORANDO")
+            registrar_evento("Luminosidade restabelecida: MONITORANDO", True)
 
 
 def piscar_led(agora, intervalo):
-    """Controla a piscagem não bloqueante do LED."""
+    """Controla a piscagem nao bloqueante do LED."""
     global ultimo_blink, estado_led_piscando
 
     if time.ticks_diff(agora, ultimo_blink) >= intervalo:
@@ -140,7 +293,7 @@ def piscar_led(agora, intervalo):
 
 
 def atualizar_sinalizacao_led(agora):
-    """Atualiza a sinalização visual conforme o estado do sistema."""
+    """Atualiza a sinalizacao visual conforme o estado do sistema."""
     if estado_sistema == OFF:
         led.value(0)
 
@@ -157,6 +310,13 @@ def atualizar_sinalizacao_led(agora):
         piscar_led(agora, BLINK_ALERTA_MS)
 
 
+# Inicializacao da conectividade
+if telegram.iniciar():
+    registrar_evento("Sistema IoT iniciado com Telegram ativo", True)
+else:
+    registrar_evento("Sistema iniciado sem Telegram")
+
+# Loop principal
 while True:
     instante_atual = time.ticks_ms()
     luminosidade_atual = ler_sensor_luminosidade()
@@ -166,4 +326,5 @@ while True:
     if modo_operacao == AUTOMATICO and estado_sistema != OFF:
         atualizar_estado_automatico(luminosidade_atual)
 
+    verificar_comandos_remotos(instante_atual)
     atualizar_sinalizacao_led(instante_atual)
