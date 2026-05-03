@@ -3,13 +3,25 @@ import os
 
 fs = LittleFS(block_size=4096, block_count=512)
 
+ARQUIVOS_IGNORADOS = {
+    "config.py",
+    "__pycache__"
+}
+
 for filename in os.listdir("src"):
+    if filename in ARQUIVOS_IGNORADOS:
+        print(f"  - ignorado: {filename}")
+        continue
+
     filepath = os.path.join("src", filename)
+
     if os.path.isfile(filepath):
         with open(filepath, "rb") as f:
             content = f.read()
+
         with fs.open(filename, "wb") as f:
             f.write(content)
+
         print(f"  + {filename}")
 
 with open("fs.bin", "wb") as f:
