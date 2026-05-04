@@ -4,6 +4,7 @@ import os
 fs = LittleFS(block_size=4096, block_count=512)
 
 ARQUIVOS_IGNORADOS = {
+    "telegram_service.py",
     "config.py",
     "__pycache__"
 }

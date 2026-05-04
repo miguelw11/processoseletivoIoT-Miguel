@@ -1,43 +1,56 @@
 from machine import Pin, ADC
 import time
-import telegram_service as telegram
 
 print("Teste")
 print("Iniciando firmware de monitoramento de luminosidade...")
 
-# Definicao dos pinos utilizados
+# Telegram fica opcional:
+# - Localmente, se existir config.py, o Telegram funciona.
+# - No GitHub Actions, sem config.py, o firmware roda normalmente sem Telegram.
+try:
+    import network
+    import urequests
+    from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+
+    TELEGRAM_ATIVO = True
+except Exception:
+    TELEGRAM_ATIVO = False
+
+
+# Definição dos pinos utilizados
 LED_PIN = 2
 BUTTON_PIN = 15
 LDR_PIN = 34
 
-# Modos de operacao
+# Modos de operação
 AUTOMATICO = 0
 MANUAL = 1
 
-# Estados possiveis do sistema
+# Estados possíveis do sistema
 OFF = 0
 MONITORANDO = 1
 ALERTA = 2
 MANUAL_NORMAL = 3
 MANUAL_ALERTA = 4
 
-# Inicializacao dos componentes
+# Inicialização dos componentes
 led = Pin(LED_PIN, Pin.OUT)
 button = Pin(BUTTON_PIN, Pin.IN, Pin.PULL_UP)
 
 ldr = ADC(Pin(LDR_PIN))
 ldr.atten(ADC.ATTN_11DB)
 
-# Configuracoes de controle
+# Configurações de controle
 DEBOUNCE_MS = 300
 LONG_PRESS_MS = 1000
 BLINK_ALERTA_MS = 200
+TELEGRAM_CHECK_MS = 5000
 
 # Limiares de histerese para o LDR
 LIMIAR_ENTRA_ALERTA = 2500
 LIMIAR_SAI_ALERTA = 1800
 
-# Variaveis de controle do firmware
+# Variáveis de controle do firmware
 modo_operacao = AUTOMATICO
 estado_sistema = OFF
 
@@ -48,13 +61,143 @@ estado_anterior_botao = 1
 ultimo_blink = 0
 estado_led_piscando = False
 
+# Variáveis de Telegram
+wifi_conectado = False
+ultimo_check_telegram = 0
+telegram_offset = 0
+
+BOT_URL = ""
+if TELEGRAM_ATIVO:
+    BOT_URL = "https://api.telegram.org/bot" + TELEGRAM_TOKEN
+
 # Registro simples dos eventos mais recentes
 eventos = []
 contador_alertas = 0
 
 
+def url_encode(texto):
+    """Codifica texto em formato seguro para envio HTTP."""
+    resultado = ""
+
+    for byte in texto.encode("utf-8"):
+        if (
+            48 <= byte <= 57 or
+            65 <= byte <= 90 or
+            97 <= byte <= 122 or
+            byte in (45, 46, 95)
+        ):
+            resultado += chr(byte)
+        elif byte == 32:
+            resultado += "+"
+        else:
+            resultado += "%{:02X}".format(byte)
+
+    return resultado
+
+
+def conectar_wifi():
+    """Conecta o ESP32 ao Wi-Fi do Wokwi."""
+    global wifi_conectado
+
+    if not TELEGRAM_ATIVO:
+        print("Telegram desativado: config.py nao encontrado")
+        return False
+
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+
+    if not wlan.isconnected():
+        print("Conectando ao Wi-Fi...")
+        wlan.connect("Wokwi-GUEST", "")
+
+        inicio = time.ticks_ms()
+
+        while not wlan.isconnected():
+            if time.ticks_diff(time.ticks_ms(), inicio) > 10000:
+                print("Falha ao conectar no Wi-Fi")
+                wifi_conectado = False
+                return False
+
+            time.sleep_ms(300)
+
+    wifi_conectado = True
+    print("Wi-Fi conectado:", wlan.ifconfig())
+    return True
+
+
+def enviar_telegram(mensagem):
+    """Envia uma mensagem para o chat configurado no Telegram."""
+    if not TELEGRAM_ATIVO or not wifi_conectado:
+        return False
+
+    url = BOT_URL + "/sendMessage"
+
+    payload = "chat_id={}&text={}".format(
+        TELEGRAM_CHAT_ID,
+        url_encode(mensagem)
+    )
+
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    try:
+        resposta = urequests.post(url, data=payload, headers=headers)
+        sucesso = resposta.status_code == 200
+
+        print("Telegram HTTP:", resposta.status_code)
+
+        resposta.close()
+        return sucesso
+
+    except Exception as erro:
+        print("Erro ao enviar Telegram:", erro)
+        return False
+
+
+def sincronizar_comandos_antigos():
+    """Evita executar comandos antigos ao iniciar o sistema."""
+    global telegram_offset
+
+    if not TELEGRAM_ATIVO or not wifi_conectado:
+        return
+
+    url = BOT_URL + "/getUpdates?timeout=0"
+
+    try:
+        resposta = urequests.get(url)
+        texto = resposta.text
+        resposta.close()
+
+        posicao = 0
+        maior_update = -1
+
+        while True:
+            update_pos = texto.find('"update_id":', posicao)
+
+            if update_pos == -1:
+                break
+
+            inicio_id = update_pos + len('"update_id":')
+            fim_id = texto.find(",", inicio_id)
+
+            update_id = int(texto[inicio_id:fim_id].strip())
+
+            if update_id > maior_update:
+                maior_update = update_id
+
+            posicao = fim_id
+
+        if maior_update >= 0:
+            telegram_offset = maior_update + 1
+            print("Telegram offset sincronizado:", telegram_offset)
+
+    except Exception as erro:
+        print("Erro ao sincronizar comandos Telegram:", erro)
+
+
 def registrar_evento(mensagem, notificar=False):
-    """Registra evento localmente e opcionalmente envia ao Telegram."""
+    """Registra evento localmente e, opcionalmente, envia ao Telegram."""
     global eventos
 
     print(mensagem)
@@ -65,7 +208,7 @@ def registrar_evento(mensagem, notificar=False):
         eventos.pop(0)
 
     if notificar:
-        telegram.enviar(mensagem)
+        enviar_telegram(mensagem)
 
 
 def obter_nome_modo():
@@ -159,7 +302,7 @@ def processar_comando_telegram(comando):
         registrar_evento("Comando remoto: sistema desligado", True)
 
     elif comando == "/status":
-        telegram.enviar(montar_status())
+        enviar_telegram(montar_status())
 
     elif comando == "/auto":
         modo_operacao = AUTOMATICO
@@ -182,31 +325,75 @@ def processar_comando_telegram(comando):
         registrar_evento("Comando remoto: sinal normal forcado", True)
 
     elif comando == "/eventos":
-        telegram.enviar(montar_eventos())
+        enviar_telegram(montar_eventos())
 
     elif comando == "/help":
-        telegram.enviar(montar_help())
+        enviar_telegram(montar_help())
 
     else:
-        telegram.enviar("Comando nao reconhecido. Use /help.")
+        enviar_telegram("Comando nao reconhecido. Use /help.")
 
 
-def verificar_comandos_remotos(agora):
-    """Busca e processa comandos remotos do Telegram."""
-    comandos = telegram.buscar_comandos(agora)
+def verificar_comandos_telegram(agora):
+    """Consulta periodicamente comandos enviados ao bot."""
+    global ultimo_check_telegram, telegram_offset
 
-    for comando in comandos:
-        print("Comando Telegram recebido:", comando)
-        processar_comando_telegram(comando)
+    if not TELEGRAM_ATIVO or not wifi_conectado:
+        return
+
+    if time.ticks_diff(agora, ultimo_check_telegram) < TELEGRAM_CHECK_MS:
+        return
+
+    ultimo_check_telegram = agora
+
+    url = BOT_URL + "/getUpdates?timeout=0"
+
+    if telegram_offset > 0:
+        url += "&offset={}".format(telegram_offset)
+
+    try:
+        resposta = urequests.get(url)
+        texto = resposta.text
+        resposta.close()
+
+        posicao = 0
+
+        while True:
+            update_pos = texto.find('"update_id":', posicao)
+
+            if update_pos == -1:
+                break
+
+            inicio_id = update_pos + len('"update_id":')
+            fim_id = texto.find(",", inicio_id)
+
+            update_id = int(texto[inicio_id:fim_id].strip())
+            telegram_offset = update_id + 1
+
+            text_pos = texto.find('"text":"', fim_id)
+
+            if text_pos != -1:
+                inicio_texto = text_pos + len('"text":"')
+                fim_texto = texto.find('"', inicio_texto)
+
+                comando = texto[inicio_texto:fim_texto]
+
+                print("Comando Telegram recebido:", comando)
+                processar_comando_telegram(comando)
+
+            posicao = fim_id
+
+    except Exception as erro:
+        print("Erro ao verificar comandos Telegram:", erro)
 
 
 def ler_sensor_luminosidade():
-    """Realiza a leitura analogica do sensor LDR."""
+    """Realiza a leitura analógica do sensor LDR."""
     return ldr.read()
 
 
 def tratar_botao(agora):
-    """Identifica clique curto e clique longo do botao."""
+    """Identifica clique curto e clique longo do botão."""
     global tempo_inicio_pressao, estado_anterior_botao, ultimo_clique
 
     leitura_atual = button.value()
@@ -229,7 +416,7 @@ def tratar_botao(agora):
 
 
 def processar_clique_curto():
-    """Processa acoes de clique curto conforme o modo atual."""
+    """Processa ações de clique curto conforme o modo atual."""
     global estado_sistema
 
     if modo_operacao == AUTOMATICO:
@@ -267,7 +454,7 @@ def alternar_modo_operacao():
 
 
 def atualizar_estado_automatico(valor_luz):
-    """Atualiza os estados automaticos conforme a luminosidade."""
+    """Atualiza os estados automáticos conforme a luminosidade."""
     global estado_sistema, contador_alertas
 
     if estado_sistema == MONITORANDO:
@@ -283,7 +470,7 @@ def atualizar_estado_automatico(valor_luz):
 
 
 def piscar_led(agora, intervalo):
-    """Controla a piscagem nao bloqueante do LED."""
+    """Controla a piscagem não bloqueante do LED."""
     global ultimo_blink, estado_led_piscando
 
     if time.ticks_diff(agora, ultimo_blink) >= intervalo:
@@ -293,7 +480,7 @@ def piscar_led(agora, intervalo):
 
 
 def atualizar_sinalizacao_led(agora):
-    """Atualiza a sinalizacao visual conforme o estado do sistema."""
+    """Atualiza a sinalização visual conforme o estado do sistema."""
     if estado_sistema == OFF:
         led.value(0)
 
@@ -310,9 +497,13 @@ def atualizar_sinalizacao_led(agora):
         piscar_led(agora, BLINK_ALERTA_MS)
 
 
-# Inicializacao da conectividade
-if telegram.iniciar():
-    registrar_evento("Sistema IoT iniciado com Telegram ativo", True)
+# Inicialização da conectividade
+if TELEGRAM_ATIVO:
+    if conectar_wifi():
+        sincronizar_comandos_antigos()
+        registrar_evento("Sistema IoT iniciado com Telegram ativo", True)
+    else:
+        registrar_evento("Sistema iniciado sem conexao Telegram")
 else:
     registrar_evento("Sistema iniciado sem Telegram")
 
@@ -326,5 +517,5 @@ while True:
     if modo_operacao == AUTOMATICO and estado_sistema != OFF:
         atualizar_estado_automatico(luminosidade_atual)
 
-    verificar_comandos_remotos(instante_atual)
+    verificar_comandos_telegram(instante_atual)
     atualizar_sinalizacao_led(instante_atual)
